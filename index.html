@@ -18,23 +18,197 @@
       font-weight: bold;
     }
 
-    input {
-      background: #111;
-      color: #fff;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 16px;
-    }
-
-    input::placeholder {
-      color: #bbb;
-    }
-
     #visor {
       position: relative;
       display: inline-block;
       max-width: 100%;
+    }
+
+    #imagenActual {
+      width: 100%;
+      border-radius: 8px;
+      display: block;
+    }
+
+    .mosaico {
+      position: absolute;
+      background: black;
+      opacity: 0.95;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    button {
+      margin: 5px;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      background: #444;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Juego de Imágenes y Palabras en Japonés</h1>
+
+  <div id="contador">Imágenes: 0 | Palabras: 0</div>
+
+  <h2>Juego</h2>
+  <div id="visor">
+    <img id="imagenActual" src="" alt="Aquí aparecerán tus imágenes">
+  </div>
+
+  <div id="juego">
+    <div id="pregunta" style="margin-top:15px;"></div>
+    <div id="opciones" style="margin-top:10px;"></div>
+    <div id="resultado" style="margin-top:10px; font-weight:bold;"></div>
+    <div id="siguiente" style="margin-top:10px;"></div>
+  </div>
+
+  <script>
+    // Hardcoded images and words
+    const imagenesBase = [
+      "https://pbs.twimg.com/media/Gb_4eDzbYAANrg8?format=jpg&name=large",
+      "https://pbs.twimg.com/media/GbOwgjNXoAAJT7j?format=jpg&name=large",
+      "https://pbs.twimg.com/media/Gov5tcLXsAADSRi?format=jpg&name=large",
+      "https://pbs.twimg.com/media/GqCUun_bcAAzFDG?format=jpg&name=large",
+      
+      // Add more image URLs here
+    ];
+
+    const preguntasBase = [
+      { japones: "足", romaji: "ashi", traduccion: "pie, pierna" },
+      { japones: "手", romaji: "te", traduccion: "mano" },
+      { japones: "目", romaji: "me", traduccion: "ojo" },
+      { japones: "女性", romaji: "Josei", traduccion: "Mujer" }
+      //{ japones: "目", romaji: "me", traduccion: "ojo" }
+      // Add more words here
+    ];
+
+    // Use only hardcoded data
+    let imagenes = [...imagenesBase];
+    let preguntas = [...preguntasBase];
+    let preguntasUsadas = [];
+    let indiceImagen = 0;
+    let imagenesUsadas = [];
+    let mosaico = null;
+
+    actualizarContador();
+    nuevaImagen();
+
+    function crearMosaico() {
+      const visor = document.getElementById("visor");
+      document.querySelectorAll(".mosaico").forEach(m => m.remove());
+      mosaico = null;
+
+      const div = document.createElement("div");
+      div.classList.add("mosaico");
+      visor.appendChild(div);
+      mosaico = div;
+    }
+
+    function actualizarContador() {
+      document.getElementById("contador").textContent =
+        `Imágenes: ${imagenes.length} | Palabras: ${preguntas.length}`;
+    }
+
+    function nuevaImagen() {
+      if (imagenes.length === 0) {
+        document.getElementById("imagenActual").src = "";
+        document.getElementById("pregunta").textContent = "⚠️ No hay imágenes disponibles.";
+        document.getElementById("opciones").innerHTML = "";
+        document.getElementById("siguiente").innerHTML = "";
+        return;
+      }
+
+      if (imagenesUsadas.length === imagenes.length) {
+        imagenesUsadas = [];
+      }
+
+      let disponibles = imagenes.filter((_, idx) => !imagenesUsadas.includes(idx));
+      const idx = Math.floor(Math.random() * disponibles.length);
+      indiceImagen = imagenes.indexOf(disponibles[idx]);
+      imagenesUsadas.push(indiceImagen);
+
+      const img = document.getElementById("imagenActual");
+      img.onload = crearMosaico;
+      img.src = imagenes[indiceImagen];
+
+      document.getElementById("siguiente").innerHTML = "";
+      mostrarPregunta();
+    }
+
+    function mostrarPregunta() {
+      document.getElementById("resultado").textContent = "";
+
+      if (preguntas.length < 2) {
+        document.getElementById("pregunta").textContent = "⚠️ Se necesitan al menos 2 palabras para jugar.";
+        document.getElementById("opciones").innerHTML = "";
+        document.getElementById("siguiente").innerHTML = "";
+        return;
+      }
+
+      let disponibles = preguntas.filter((_, idx) => !preguntasUsadas.includes(idx));
+      if (disponibles.length === 0) {
+        preguntasUsadas = [];
+        disponibles = preguntas;
+      }
+
+      const idx = Math.floor(Math.random() * disponibles.length);
+      const pregunta = disponibles[idx];
+      const preguntaIndex = preguntas.indexOf(pregunta);
+      preguntasUsadas.push(preguntaIndex);
+
+      let opciones = [`${pregunta.romaji} (${pregunta.traduccion})`];
+      let otras = preguntas.filter(p => p.romaji !== pregunta.romaji);
+
+      while (opciones.length < 4 && otras.length > 0) {
+        const randomIndex = Math.floor(Math.random() * otras.length);
+        const p = otras[randomIndex];
+        opciones.push(`${p.romaji} (${p.traduccion})`);
+        otras.splice(randomIndex, 1);
+      }
+
+      opciones = opciones.sort(() => Math.random() - 0.5);
+
+      document.getElementById("pregunta").textContent =
+        `¿Cómo se lee esta palabra?: 「${pregunta.japones}」`;
+
+      document.getElementById("opciones").innerHTML = opciones.map(op =>
+        `<button onclick="responder('${op.split(' ')[0]}','${pregunta.romaji}','${pregunta.japones}','${pregunta.traduccion}')">${op}</button>`
+      ).join(" ");
+    }
+
+    function responder(opcion, correcta, japones, traduccion) {
+      if (opcion === correcta) {
+        document.getElementById("resultado").textContent =
+          `✅ Correcto: 「${japones}」 → ${correcta} (${traduccion})`;
+        if (mosaico) {
+          mosaico.remove();
+          mosaico = null;
+          document.getElementById("opciones").innerHTML = "";
+          document.getElementById("pregunta").textContent = "";
+          document.getElementById("siguiente").innerHTML =
+            `<button onclick="nuevaImagen()">Siguiente Imagen</button>`;
+        }
+      } else {
+        document.getElementById("resultado").textContent = "❌ Incorrecto, intenta de nuevo.";
+        mostrarPregunta();
+      }
+    }
+  </script>
+
+</body>
+</html>      max-width: 100%;
     }
 
     #imagenActual {
